@@ -72,31 +72,31 @@ def Checkin(projectName, projectTime, requireCheckinHour, signoutMsg):
         session = requests.session()
         res, session = HttpMethod(ENDPOINT_URL, 'GET', session)
         cookies = res.cookies
-        print("GET ", ENDPOINT_URL, "Success")
+        log.CheckinLog(f"GET {ENDPOINT_URL} Success")
     except Exception as err:
-        txt = f"{CURRENT_TIME} >> GET {ENDPOINT_URL} error message: {err} \n"
+        txt = f"{CURRENT_TIME} >> GET {ENDPOINT_URL} error message: {err} "
         log.CheckinLog(txt)
-        print("GET ", ENDPOINT_URL, "Failed")
-        print("Error: ", err)
+        log.CheckinLog(f"GET {ENDPOINT_URL} Failed")
+        log.CheckinLog(f"Error: {err}")
 
     try:
         res, session = HttpMethod(NCU_HOST, 'POST', session, cookies=cookies, data=GetPortalLoginPayload(session))
         cookies = session.cookies
-        print("POST ", NCU_HOST, "Success")
+        log.CheckinLog(f"POST {NCU_HOST} Success")
     except Exception as err:
-        txt = f"{CURRENT_TIME} >> POST {NCU_HOST} error message: {err} \n"
+        txt = f"{CURRENT_TIME} >> POST {NCU_HOST} error message: {err} "
         log.CheckinLog(txt)
-        print("POST ", NCU_HOST, "Failed")
-        print("Error: ", err)
+        log.CheckinLog(f"POST {NCU_HOST} Failed")
+        log.CheckinLog(f"Error: {err}")
         
     try:
         res, session = HttpMethod(LEAVE_URL, 'POST', session, cookies=cookies, data=GetPortalLeavingPayload(session))
-        print("POST ", LEAVE_URL, "Success")
+        log.CheckinLog(f"POST {LEAVE_URL} Success")
     except Exception as err:
-        txt = f"{CURRENT_TIME} >> POST {LEAVE_URL} error message: {err} \n"
+        txt = f"{CURRENT_TIME} >> POST {LEAVE_URL} error message: {err} "
         log.CheckinLog(txt)
-        print("POST ", LEAVE_URL, "Failed")
-        print("Error: ", err)
+        log.CheckinLog(f"POST {LEAVE_URL} Failed")
+        log.CheckinLog(f"Error: {err}")
         
     try:
         res, session = HttpMethod(HOST, 'GET', session)
@@ -106,13 +106,13 @@ def Checkin(projectName, projectTime, requireCheckinHour, signoutMsg):
         content = res.content.decode('utf-8')
         page = BS(content, features='lxml')
         username = parsers.ExtractUserName(page)
-        print("Login User: ", username)
-        print("GET ", HOST, "Success")
+        log.CheckinLog(f"Login User: {username}")
+        log.CheckinLog(f"GET {HOST} Success")
     except Exception as err:
-        txt = f"{CURRENT_TIME} >> GET {HOST} error message: {err} \n"
+        txt = f"{CURRENT_TIME} >> GET {HOST} error message: {err} "
         log.CheckinLog(txt)
-        print("GET ", HOST, "Failed")
-        print("Error: ", err)
+        log.CheckinLog(f"GET {HOST} Failed")
+        log.CheckinLog(f"Error: {err}")
 
     try:
         res, session = HttpMethod(NCU_CHECKIN_HOST, 'GET', session, cookies=cookies)
@@ -122,16 +122,16 @@ def Checkin(projectName, projectTime, requireCheckinHour, signoutMsg):
         page = BS(content, features='lxml')
         ParttimeUsuallyId = parsers.ExtractParttimeUsuallyId(page, projectName, projectTime)
         token = parsers.ExtractCheckinToken(page)
-        print("Checkin Token: ", token)
-        print("ParttimeUsuallyId : ", ParttimeUsuallyId)
+        log.CheckinLog(f"Checkin Token: {token}")
+        log.CheckinLog(f"ParttimeUsuallyId : {ParttimeUsuallyId}")
         if type(ParttimeUsuallyId) != int:
             return
-        print("GET ", NCU_CHECKIN_HOST, "Success")
+        log.CheckinLog(f"GET {NCU_CHECKIN_HOST} Success")
     except Exception as err:
-        txt = f"{CURRENT_TIME} >> GET {NCU_CHECKIN_HOST} error message: {err} \n"
+        txt = f"{CURRENT_TIME} >> GET {NCU_CHECKIN_HOST} error message: {err} "
         log.CheckinLog(txt)
-        print("GET ", NCU_CHECKIN_HOST, "Failed")
-        print("Error: ", err)
+        log.CheckinLog(f"GET {NCU_CHECKIN_HOST} Failed")
+        log.CheckinLog(f"Error: {err}")
 
     try:    
         res, session = HttpMethod(NCU_CHECKIN_CREATE, 'GET', session, cookies=cookies, data={'ParttimeUsuallyId': ParttimeUsuallyId})
@@ -145,9 +145,9 @@ def Checkin(projectName, projectTime, requireCheckinHour, signoutMsg):
         signintime = page.find('div', {'id': 'SigninTime'}).contents
         signouttime = page.find('div', {'id': 'SignoutTime'}).contents
         
-        print("idNo: ", idNo)
-        print("signintime: ", signintime)
-        print("signouttime: ", signouttime)
+        log.CheckinLog(f"idNo: {idNo}")
+        log.CheckinLog(f"signintime: {signintime}")
+        log.CheckinLog(f"signouttime: {signouttime}")
         
         payload = {
             'functionName' : "doSign",
@@ -156,45 +156,45 @@ def Checkin(projectName, projectTime, requireCheckinHour, signoutMsg):
             'AttendWork' : "",
             '_token' : token
         }
-        print("GET ", NCU_CHECKIN_CREATE, "Success")
+        log.CheckinLog(f"GET {NCU_CHECKIN_CREATE} Success")
     except Exception as err:
-        txt = f"{CURRENT_TIME} >> GET {NCU_CHECKIN_CREATE} error message: {err} \n"
+        txt = f"{CURRENT_TIME} >> GET {NCU_CHECKIN_CREATE} error message: {err} "
         log.CheckinLog(txt)
-        print("GET ", NCU_CHECKIN_CREATE, "Failed")
-        print("Error: ", err)
+        log.CheckinLog(f"GET {NCU_CHECKIN_CREATE} Failed")
+        log.CheckinLog(f"Error: {err}")
 
     if signintime != []:
-        txt = '簽退計畫： '+ projectName +'\n'+'簽退時間： ' + str(CURRENT_TIME) + '\n'
+        txt = '簽退計畫： '+ projectName +'\n'+'簽退時間： ' + str(CURRENT_TIME) 
         signintime_hour = int(signintime[0].split(":")[0])
         if CURRENT_TIME.hour - signintime_hour >= requireCheckinHour:
             try:
                 payload['AttendWork'] = signoutMsg
                 res, session = HttpMethod(NCU_POST_CHECKIN_CREATE, 'POST', session, cookies=cookies, data=payload)
                 content = res.content.decode('utf-8')
-                print("POST ", NCU_POST_CHECKIN_CREATE, "Success")
+                log.CheckinLog(f"POST {NCU_POST_CHECKIN_CREATE} Success")
                 log.CheckinLog(txt)
                 return True
             except Exception as err:
-                txt = f"POST {NCU_POST_CHECKIN_CREATE} error message: {err} \n"
+                txt = f"POST {NCU_POST_CHECKIN_CREATE} error message: {err} "
                 log.CheckinLog(txt)
-                print("POST ", NCU_POST_CHECKIN_CREATE, "Failed")
-                print("Error: ", err)
+                log.CheckinLog(f"POST {NCU_POST_CHECKIN_CREATE} Failed")
+                log.CheckinLog(f"Error: {err}")
         else:
-            txt = f"簽退時間未滿{requireCheckinHour}小時： " + str(CURRENT_TIME) + '\n'
+            txt = f"簽退時間未滿{requireCheckinHour}小時： " + str(CURRENT_TIME) 
             log.CheckinLog(txt)
-            print("Not Yet To Signout")
+            log.CheckinLog("Not Yet To Signout")
     else:
-        print("Signin!")
-        txt = '簽到計畫： '+ projectName +'\n' + '簽到時間： ' + str(CURRENT_TIME) + '\n'
+        log.CheckinLog("Signin!")
+        txt = '簽到計畫： '+ projectName +'\n' + '簽到時間： ' + str(CURRENT_TIME) 
         try:
             res, session = HttpMethod(NCU_POST_CHECKIN_CREATE, 'POST', session, cookies=cookies, data=payload)
             content = res.content.decode('utf-8')
-            print("POST ", NCU_POST_CHECKIN_CREATE, "Success")
+            log.CheckinLog(f"POST {NCU_POST_CHECKIN_CREATE} Success")
             log.CheckinLog(txt)
             return True
         except Exception as err:
-            txt = f"{CURRENT_TIME} >> POST {NCU_POST_CHECKIN_CREATE} error message: {err} \n"
+            txt = f"{CURRENT_TIME} >> POST {NCU_POST_CHECKIN_CREATE} error message: {err} "
             log.CheckinLog(txt)
-            print("POST ", NCU_POST_CHECKIN_CREATE, "Failed")
-            print("Error: ", err)
+            log.CheckinLog(f"POST {NCU_POST_CHECKIN_CREATE} Failed")
+            log.CheckinLog(f"Error: {err}")
     return False

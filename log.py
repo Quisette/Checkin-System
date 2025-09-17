@@ -1,4 +1,7 @@
+import datetime
 def CheckinLog(msg):
-    path = 'log.txt'
+    path = 'D://repos/Checkin-System/log.txt'
     with open(path, 'a') as f:
-        f.write(msg)
+        str = f"[{datetime.datetime.now().date()}] {msg} \n"
+        print(str)
+        f.write(str)
