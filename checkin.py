@@ -1,6 +1,6 @@
 import json
 import log
-from checkin_tool import Checkin
+from selenium_checkin import SeleniumCheckin
 from datetime import datetime, timedelta
 
 def parse_taiwan_year_range(project_time):
@@ -34,7 +34,7 @@ CURRENT_DATETIME = datetime.now()
 SIGN_THRESHOLD = timedelta(minutes=10)
 
 
-log.CheckinLog("Daily checking started")
+log.CheckinLog("Daily checking started (Selenium)")
 
 with open("config.json", "r", encoding="utf-8") as f:
     config = json.load(f)
@@ -76,12 +76,11 @@ for data in config:
                 # Check if this timestamp was already processed today
                 timestamp_str = timestamp.strftime('%Y-%m-%d %H:%M:%S')
                 if timestamp_str not in project["checked_in_date"]:
-                    
+
                     if abs(CURRENT_DATETIME - timestamp) < SIGN_THRESHOLD:
-                    # if True:
                         #checkin/out
                         log.CheckinLog("starting checking in ....")
-                        if Checkin(project["projectName"],project["projectTime"],project["checkinHour"],project["message"]):
+                        if SeleniumCheckin(project["projectName"], project["projectTime"], project["checkinHour"], project["message"]):
                             # Add processed timestamp to prevent duplicate processing
                             config[data]["checked_in_date"].append(timestamp_str)
                             log.CheckinLog("Checkin/out Success. ")
@@ -99,4 +98,4 @@ if not current_date_in_range:
 with open("config.json", "w", encoding="utf-8") as f:
     json.dump(config, f, ensure_ascii=False, indent=2)
 
-log.CheckinLog( f"Daily checking ended")
+log.CheckinLog(f"Daily checking ended (Selenium)")
