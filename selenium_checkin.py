@@ -7,6 +7,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException, NoSuchElementException
+from webdriver_manager.chrome import ChromeDriverManager
 import log
 import random
 
@@ -24,7 +25,6 @@ def SeleniumCheckin(projectName, projectTime, requireCheckinHour, signoutMsg):
     driver = None
     try:
         # Setup Chrome options
-        chrome_driver_path = r"D:\repos\Checkin-System\chromedriver.exe"
 
         # Try to find Chrome executable (chrome.exe, NOT chromedriver.exe)
         chrome_binary_path = None
@@ -45,7 +45,7 @@ def SeleniumCheckin(projectName, projectTime, requireCheckinHour, signoutMsg):
             log.CheckinLog("Chrome binary (chrome.exe) not found. Please install Chrome from https://www.google.com/chrome/")
             return False
 
-        service = Service(executable_path=chrome_driver_path)
+        service = Service(ChromeDriverManager().install())
         options = webdriver.ChromeOptions()
         options.binary_location = chrome_binary_path  # MUST be chrome.exe path
         options.add_argument("--disable-blink-features=AutomationControlled")
@@ -132,6 +132,7 @@ def SeleniumCheckin(projectName, projectTime, requireCheckinHour, signoutMsg):
             parttime_id = None
             for row in rows[1:]:  # Skip header row
                 cells = row.find_elements(By.TAG_NAME, "td")
+                print(projectName)
                 if len(cells) >= 6:
                     project_cell = cells[1].text.strip()
                     time_cell = cells[2].text.strip()
