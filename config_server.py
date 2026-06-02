@@ -28,6 +28,20 @@ HTML = r"""<!DOCTYPE html>
   body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
          background: #f5f5f7; color: #1d1d1f; min-height: 100vh; padding: 32px 16px; }
   h1 { font-size: 24px; font-weight: 700; }
+
+  /* Credentials banner */
+  #creds-banner { max-width: 780px; margin: 0 auto 24px;
+                  background: #fff3cd; border: 1px solid #ffc107;
+                  border-radius: 14px; padding: 20px 24px; display: none; }
+  #creds-banner.visible { display: block; }
+  #creds-banner h2 { font-size: 15px; font-weight: 600; margin-bottom: 4px; color: #856404; }
+  #creds-banner p  { font-size: 13px; color: #856404; margin-bottom: 14px; }
+  #creds-banner .row { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; }
+  #creds-banner input { flex: 1; min-width: 140px; padding: 8px 12px;
+                        border: 1px solid #d2d2d7; border-radius: 8px;
+                        font-size: 14px; font-family: inherit; background: #fff; }
+  #creds-banner input:focus { outline: none; border-color: #0071e3; }
+  #creds-status { font-size: 13px; margin-top: 10px; min-height: 18px; }
   .projects { display: flex; flex-direction: column; gap: 20px; max-width: 780px; margin: 0 auto; }
 
   .card { background: #fff; border-radius: 14px; padding: 24px;
@@ -98,6 +112,17 @@ HTML = r"""<!DOCTYPE html>
 </style>
 </head>
 <body>
+<div id="creds-banner">
+  <h2>⚠ Credentials not set up</h2>
+  <p>Enter your NCU Portal student ID and password to enable automatic check-in.</p>
+  <div class="row">
+    <input id="creds-account" type="text"     placeholder="Student ID" autocomplete="username">
+    <input id="creds-password" type="password" placeholder="Password"   autocomplete="current-password">
+    <button class="btn btn-primary" onclick="saveCredentials()">Save Credentials</button>
+  </div>
+  <div id="creds-status"></div>
+</div>
+
 <div style="max-width:780px;margin:0 auto">
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px">
     <h1>Checkin Config</h1>
@@ -112,7 +137,7 @@ HTML = r"""<!DOCTYPE html>
 <script>
 let config = {};
 
-async function load() {
+async function _loadConfig() {
   const res = await fetch('/config');
   config = await res.json();
   render();
@@ -351,6 +376,51 @@ function toast(msg) {
   setTimeout(() => el.classList.remove('show'), 2200);
 }
 
+// ── Credentials ──────────────────────────────────────────────────────────────
+
+async function checkCredentials() {
+  const res  = await fetch('/credentials/status');
+  const data = await res.json();
+  document.getElementById('creds-banner').classList.toggle('visible', !data.ok);
+}
+
+async function saveCredentials() {
+  const account  = document.getElementById('creds-account').value.trim();
+  const password = document.getElementById('creds-password').value;
+  const status   = document.getElementById('creds-status');
+
+  if (!account || !password) {
+    status.textContent = 'Student ID and password are required.';
+    status.style.color = '#842029';
+    return;
+  }
+
+  status.textContent = 'Saving…';
+  status.style.color = '#856404';
+
+  const res  = await fetch('/credentials', {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body:    JSON.stringify({ account, password }),
+  });
+  const data = await res.json();
+
+  if (data.ok) {
+    document.getElementById('creds-password').value = '';
+    document.getElementById('creds-account').value  = '';
+    document.getElementById('creds-banner').classList.remove('visible');
+    toast('Credentials saved ✓');
+  } else {
+    status.textContent = data.error || 'Failed to save credentials.';
+    status.style.color = '#842029';
+  }
+}
+
+async function load() {
+  await checkCredentials();
+  await _loadConfig();
+}
+
 load();
 </script>
 </body>
@@ -366,6 +436,14 @@ class Handler(BaseHTTPRequestHandler):
         elif path == "/config":
             with open(CONFIG_FILE, "rb") as f:
                 self._respond(200, "application/json", f.read())
+        elif path == "/credentials/status":
+            try:
+                import sys; sys.path.insert(0, os.path.dirname(CONFIG_FILE))
+                import ncu_auth
+                ncu_auth.get_credentials()
+                self._json(200, {"ok": True})
+            except Exception:
+                self._json(200, {"ok": False})
         elif path == "/test-log":
             qs  = parse_qs(urlparse(self.path).query)
             key = qs.get("key", [""])[0]
@@ -388,6 +466,27 @@ class Handler(BaseHTTPRequestHandler):
                 self._json(200, {"ok": True})
             except Exception as e:
                 self._respond(500, "text/plain", str(e).encode())
+
+        elif path == "/credentials":
+            try:
+                payload  = json.loads(body)
+                account  = payload["account"].strip()
+                password = payload["password"]
+                if not account or not password:
+                    self._json(400, {"ok": False, "error": "Account and password required"})
+                    return
+                import sys; sys.path.insert(0, os.path.dirname(CONFIG_FILE))
+                import ncu_auth, secrets as _secrets
+                passphrase = _secrets.token_urlsafe(32)
+                encrypted  = ncu_auth._encrypt(f"{account}:{password}", passphrase)
+                with open(ncu_auth.CREDS_FILE, "wb") as f:
+                    f.write(encrypted)
+                os.chmod(ncu_auth.CREDS_FILE, 0o600)
+                ncu_auth._store_passphrase(passphrase)
+                passphrase = password = None
+                self._json(200, {"ok": True})
+            except Exception as e:
+                self._json(500, {"ok": False, "error": str(e)})
 
         elif path == "/test-checkin":
             try:
