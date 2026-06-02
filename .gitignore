@@ -1,3 +1,5 @@
 __pycache__/
 .venv/
 log.txt
+credentials.enc
+.env

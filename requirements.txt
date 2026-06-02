@@ -4,3 +4,5 @@ lxml
 argparse
 selenium
 webdriver-manager
+cryptography
+keyring

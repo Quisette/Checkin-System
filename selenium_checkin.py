@@ -16,41 +16,36 @@ NCU_CHECKIN_HOST = "https://cis.ncu.edu.tw/HumanSys/student/stdSignIn"
 
 CURRENT_TIME = datetime.now()
 
-# Set Account/Password In Environment Variables -> NCU_PORTAL = account:password
-userinfo = os.environ['NCU_PORTAL'].split(":")
-ACCOUNT = userinfo[0]
-PASSWORD = userinfo[1]
 
-def SeleniumCheckin(projectName, projectTime, requireCheckinHour, signoutMsg):
+def _load_credentials() -> tuple[str, str]:
+    """Decrypt credentials via ncu_auth, falling back to NCU_PORTAL env var."""
+    try:
+        import ncu_auth
+        return ncu_auth.get_credentials()
+    except Exception:
+        pass
+
+    raw = os.environ.get("NCU_PORTAL", "")
+    if ":" in raw:
+        return raw.split(":", 1)
+
+    raise RuntimeError(
+        "No credentials found.\n"
+        "  Run: python ncu_auth.py login\n"
+        "  Or:  export NCU_PORTAL=studentid:password"
+    )
+
+
+ACCOUNT, PASSWORD = _load_credentials()
+
+def SeleniumCheckin(projectName, projectTime, signoutMsg):
     driver = None
     try:
-        # Setup Chrome options
-
-        # Try to find Chrome executable (chrome.exe, NOT chromedriver.exe)
-        chrome_binary_path = None
-        possible_chrome_paths = [
-            r"C:\Program Files\Google\Chrome\Application\chrome.exe",
-            r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
-            os.path.expandvars(r"%LOCALAPPDATA%\Google\Chrome\Application\chrome.exe"),
-            r"D:\chrome\chrome-win64\chrome.exe"
-        ]
-
-        for path in possible_chrome_paths:
-            if os.path.exists(path):
-                chrome_binary_path = path
-                log.CheckinLog(f"Found Chrome at: {chrome_binary_path}")
-                break
-
-        if not chrome_binary_path:
-            log.CheckinLog("Chrome binary (chrome.exe) not found. Please install Chrome from https://www.google.com/chrome/")
-            return False
-
         service = Service(ChromeDriverManager().install())
         options = webdriver.ChromeOptions()
-        options.binary_location = chrome_binary_path  # MUST be chrome.exe path
         options.add_argument("--disable-blink-features=AutomationControlled")
         options.add_experimental_option("excludeSwitches", ["enable-automation"])
-        options.add_experimental_option('useAutomationExtension', False)
+        options.add_experimental_option("useAutomationExtension", False)
 
         driver = webdriver.Chrome(service=service, options=options)
         driver.set_page_load_timeout(60)  # 60 second timeout
@@ -186,15 +181,6 @@ def SeleniumCheckin(projectName, projectTime, requireCheckinHour, signoutMsg):
                 log.CheckinLog("Clicked sign-in button")
                 time.sleep(2)
             else:
-                # Signing out - check if enough hours have passed
-                if signin_time:
-                    signin_hour = int(signin_time.split(":")[0])
-                    if CURRENT_TIME.hour - signin_hour < requireCheckinHour:
-                        txt = f"簽退時間未滿{requireCheckinHour}小時： " + str(CURRENT_TIME)
-                        log.CheckinLog(txt)
-                        log.CheckinLog("Not Yet To Signout")
-                        return False
-
                 # Fill in signout message in AttendWork textarea
                 try:
                     message_field = driver.find_element(By.ID, "AttendWork")
