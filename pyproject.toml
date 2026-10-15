@@ -1,0 +1,13 @@
+[project]
+name = "checkin-system"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "cryptography>=48.0.0",
+    "keyring>=25.7.0",
+    "requests>=2.34.2",
+    "selenium>=4.44.0",
+    "webdriver-manager>=4.1.1",
+]

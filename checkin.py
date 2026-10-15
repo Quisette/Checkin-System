@@ -80,7 +80,7 @@ for data in config:
                     if abs(CURRENT_DATETIME - timestamp) < SIGN_THRESHOLD:
                         #checkin/out
                         log.CheckinLog("starting checking in ....")
-                        if SeleniumCheckin(project["projectName"], project["projectTime"], project["checkinHour"], project["message"]):
+                        if SeleniumCheckin(project["projectName"], project["projectTime"], project["message"]):
                             # Add processed timestamp to prevent duplicate processing
                             config[data]["checked_in_date"].append(timestamp_str)
                             log.CheckinLog("Checkin/out Success. ")
